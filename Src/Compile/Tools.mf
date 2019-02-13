@@ -1,0 +1,31 @@
+#*********************************************************
+#* All right reserved.
+#* Author: chaofa.yan
+#* Date: 2019/02/13
+#* History Information
+#* Author 		Date 		Description
+#* chaofa.yan	2019/02/13 	Created the file
+#*************************************************************************/
+CC = gcc
+CPP = g++
+AR = ar
+OBJDUMP = objdump
+
+
+
+
+DEL_FILE = del
+DEL_FOLDER = rd
+
+MACHINE = 
+CFLAGS = -W -Wall -Werror -Wunused-function -ffunction-sections -fdata-sections\
+		-Wformat -O2
+
+INCLUDE_DIR += -I$(TOP)/include
+CFLAGS_C = $(MACHINE) $(CFLAGS) $(INCLUDE_DIR)
+
+ECHO = echo
+COPY = copy
+
+#MAKE = mingw32-make.exe
+

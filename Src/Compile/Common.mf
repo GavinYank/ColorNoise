@@ -1,0 +1,183 @@
+#*********************************************************
+#* All right reserved.
+#* Author: chaofa.yan
+#* Date: 2019/02/13
+#* History Information
+#* Author 		Date 		Description
+#* chaofa.yan	2019/02/13 	Created the file
+#*************************************************************************/
+
+include $(TOP)/compile/tools.mf
+
+
+.PHONY: all clean clean_help make_sub_dir $(SUB_DIRS) link
+
+
+OBJPATH = obj
+
+all: $(TARGET) make_sub_dir
+#	@$(ECHO) MAKECMDGOALS = $(MAKECMDGOALS)
+ifeq ($(LINK_CMD), link)
+	@$(MAKE) -s link
+endif
+	
+C_FILE = $(filter %.c, $(SRC_C))
+CPP_FILE = $(filter %.cpp, $(SRC_C))
+ASM_FILE = $(filter %.S, $(SRC_C))
+
+DEPS_H = $(patsubst %.c, %.d, $(C_FILE))
+DEPS_H += $(patsubst %.cpp, %.d, $(CPP_FILE))
+DEPS_H += $(patsubst %.S, %.d, $(ASM_FILE))
+
+
+DEPS = $(addprefix $(OBJPATH)/, $(DEPS_H))
+#DEPS_O = $(patsubst %.d, %.od, $(DEPS))
+
+
+OBJ = $(patsubst %.d, %.o, $(DEPS))
+
+ifeq ($(MAKECMDGOALS), all)
+	-include $(DEPS)
+endif
+
+TMP_D = $(OBJPATH)\tmp_d
+
+$(OBJPATH)/%.d: %.c
+	@if not exist "$(OBJPATH)/$(dir $<)" md "$(OBJPATH)/$(dir $<)"
+	@$(ECHO) make depends of $<
+	@$(CC) $(CFLAGS_C) -MM $< > $(TMP_D)
+	@for /f "eol= delims=" %%a in ($(TMP_D)) do (\
+		@$(ECHO) $@ $(dir $@)%%a>$@\
+	)
+	@for /f "skip=1 delims=" %%a in ($(TMP_D)) do (\
+		@$(ECHO) %%a>>$@\
+	)
+
+
+
+
+#	@$(CC) $(CFLAGS_C) -MM $< > $(TMP_D)
+#	@for /f "eol= delims=" %%a in ($(TMP_D)) do (\
+#		@$(ECHO) $@ $(dir $@)%%a>$@\
+#	)
+#	@for /f "skip=1 delims=" %%a in ($(TMP_D)) do (\
+#		@$(ECHO) %%a>>$@\
+#	)
+	
+#	@-set /p="$@ $(dir $@)"> $(TMP_D)<nul
+#	@$(CC) $(CFLAGS_C) -MM $< >> $(TMP_D)
+#	@$(COPY) "$(TMP_D)" "$@" >nul
+
+$(OBJPATH)/%.o: %.c
+	@$(ECHO) compiling $<
+	@$(CC) $(CFLAGS_C) -c $< -o $@
+
+$(OBJPATH)/%.d: %.cpp
+	@if not exist "$(OBJPATH)/$(dir $<)" md "$(OBJPATH)/$(dir $<)"
+	@$(ECHO) make depends of $<
+	@$(CPP) $(CFLAGS_C) -MM $< > $(TMP_D)
+	@for /f "eol= delims=" %%a in ($(TMP_D)) do (\
+		@$(ECHO) $@ $(dir $@)%%a>$@\
+	)
+	@for /f "skip=1 delims=" %%a in ($(TMP_D)) do (\
+		@$(ECHO) %%a>>$@\
+	)
+
+$(OBJPATH)/%.o: %.cpp
+	@$(ECHO) compiling $<
+	@$(CPP) $(CFLAGS_C) -c $< -o $@
+	
+
+$(TARGET): CleanTarget $(OBJ)
+	@if exist "$(TMP_D)" $(DEL_FILE) "$(TMP_D)"
+	@if exist "$(TOP)/../lib\$(TARGET)" $(DEL_FILE) "$(TOP)/../lib\$(TARGET)"
+	@$(ECHO) generating    $@
+	@$(AR) rcs $(OBJPATH)/$@ $(OBJ)
+	@$(COPY) "$(OBJPATH)\$@" "$(TOP)/../lib/$@" >nul
+
+CleanTarget:
+	@if exist "$(TOP)/../lib\$(TARGET)" $(DEL_FILE) "$(TOP)/../lib\$(TARGET)"
+	
+clean_help:
+	@$(ECHO) deleting $(TARGET)
+	@if exist "$(TOP)/../lib\$(TARGET)" $(DEL_FILE) /q "$(TOP)/../lib\$(TARGET)"
+	@$(ECHO) deleting *.o and *.d
+	@if exist $(OBJPATH) $(DEL_FOLDER) /s /q $(OBJPATH)
+
+CleanDisassembly:
+	@if exist "$(EXE_FILE_NAME).asm" $(DEL_FILE) "$(EXE_FILE_NAME).asm"
+	@if exist "$(EXE_FILE_NAME).exe" $(DEL_FILE) "$(EXE_FILE_NAME).exe"
+
+clean: CleanDisassembly clean_help make_sub_dir
+	
+
+
+
+
+
+make_sub_dir:
+	@for %%i in ($(SUB_DIRS)) do \
+		if exist %%i (\
+			if exist %%i/makefile (\
+				@$(ECHO). && $(ECHO) cd %%i and make $(MAKECMDGOALS) && \
+				cd %%i && $(MAKE) -s $(MAKECMDGOALS) && cd..\
+			) else (\
+				@$(ECHO). && @$(ECHO) no makefile in dir %%i \
+			)\
+		)
+
+
+
+$(SUB_DIRS):
+	@if exist $@ cd $@ && $(MAKE) -s all && cd ..
+
+EXE_FILE_NAME = $(TOP)\App
+
+
+dis:
+	$(OBJDUMP) -D $(EXE_FILE_NAME).exe > $(EXE_FILE_NAME).asm
+
+
+ifeq ($(MAKECMDGOALS), link)
+
+GCC_LIB = C:\TDM-GCC-32\lib\gcc\mingw32\5.1.0
+#GCC_LIB = C:\GNUstep\lib\gcc\mingw32\4.6.1
+#GCC_LIB = C:\Program Files (x86)\CodeBlocks\MinGW\lib\gcc\mingw32\4.8.1
+
+
+
+
+link:
+	@$(ECHO) .
+	@$(ECHO)			generating	$(EXE_FILE_NAME).exe
+	@$(CC) $(CFLAGS_C) -o $(EXE_FILE_NAME) -Xlinker "-(" $(SRC_A) -Xlinker "-)"
+	@$(ECHO)			executing	$(EXE_FILE_NAME).exe
+	@$(ECHO) .
+	@$(EXE_FILE_NAME).exe
+
+SRC_A = "$(GCC_LIB)\libstdc++.a"
+SRC_A += "$(GCC_LIB)\..\..\..\libwinmm.a"
+SRC_A += "$(GCC_LIB)\..\..\..\libwsock32.a"
+SRC_A += $(wildcard $(TOP)/../lib/*.a)
+
+endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
